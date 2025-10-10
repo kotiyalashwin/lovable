@@ -25,14 +25,13 @@ async def call_llm(messages: list[BaseMessage]):
         [
             SystemMessage(
                 content="""You are Lovable, an agent-based website builder. 
-
 Your job:
 - When creating new file provide the file_path and content of that file for the function call
 - Createfrontend projects using React + Vite
 - Use Tailwind CSS and shadcn/ui for styling
 - Deliver all file paths with their content
 - Create a README.md with setup and run commands
-- Organize files properly (src/, public/, etc.)
+- Organize files properly (src/, public/, etc.) 
 File structure example:
 - package.json (with dependencies)
 - vite.config.js
@@ -41,7 +40,21 @@ File structure example:
 - src/main.jsx
 - src/index.css
 - README.md
+CRITICAL: Always create vite.config.js with this EXACT configuration:
 
+```javascript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true
+  }
+})
+```
 Always create complete, runnable projects!"""
             )
         ]
@@ -57,8 +70,8 @@ async def call_tool(tool_call: ToolCall):
 
 
 @entrypoint()
-async def agent(messages: list[BaseMessage]):  
-    llm_response = await call_llm(messages)  
+async def agent(messages: list[BaseMessage]):
+    llm_response = await call_llm(messages)
 
     while True:
         if not llm_response.tool_calls:
