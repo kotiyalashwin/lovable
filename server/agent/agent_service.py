@@ -4,55 +4,61 @@ from typing import Dict
 from fastapi import WebSocket
 from langchain_core.messages import HumanMessage
 from agent.core import agent
-from e2b_code_interpreter import Sandbox
+from e2b_code_interpreter import AsyncSandbox
 import os
 from dotenv import load_dotenv 
 from utils.persistent_store import load_file_store,save_file_store
 load_dotenv() 
 api_key = os.getenv("E2B_API_KEY")
-
 class AgentService:
     def __init__(self):
         self.agent = agent
-        self.sandboxes: Dict[str, Sandbox] = {}
+        self.sandboxes: Dict[str, AsyncSandbox] = {}
 
     async def get_sandbox(self, project_id: str):
         if project_id not in self.sandboxes:
-            print(f'Initializing new sandbox for project: ${project_id}')
-            self.sandboxes[project_id] = Sandbox.create()
-            self.sandboxes[project_id].run_code("curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && "
-        "apt-get install -y nodejs") 
+            print(f'Initializing new sandbox for project: {project_id}')
+            self.sandboxes[project_id] =await  AsyncSandbox.create(timeout=300)
+        #     await self.sandboxes[project_id].commands.run("curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && "
+        # "apt-get install -y nodejs") 
+            exec_result = await self.sandboxes[project_id].commands.run("npm --version", )
+            print("----------------------------------")
+            print("\n \n")
+            print(f"NPM --VERSION result: {exec_result}")
+            print("\n \n")
+            print("----------------------------------")
+            print("Sandbox is setup create with NPM environment")
         return self.sandboxes[project_id]
 
     async def close_sandbox(self, project_id: str):
         """Close a specific sandbox"""
         if project_id in self.sandboxes:
-            self.sandboxes[project_id].kill()
+            await self.sandboxes[project_id].kill()
             del self.sandboxes[project_id]
             print(f'  Closed sandbox: {project_id}')
 
-    async def exec_in_sandbox(self, tool_name: str, tool_args: dict, sandbox: Sandbox, socket: WebSocket):
+    async def exec_in_sandbox(self, tool_name: str, tool_args: dict, sandbox: AsyncSandbox, socket: WebSocket):
         # check which tool is being called
         if tool_name == 'create_file':
             file_path = tool_args['file_path']
             content = tool_args['content']
-            sandbox.files.write(file_path, content)
+            await sandbox.files.write(file_path, content) 
             if socket:
-               await  socket.send_json({'e': 'file_created', 'message': f'Created ${file_path}'})
+               await  socket.send_json({'e': 'file_created', 'message': f'Created {file_path}'})
         elif tool_name == "execute_command":
             command = tool_args["command"]
-
+            print(f"command :{command}")
             if socket:
                 await socket.send_json({
                     "e":"command_started",
                     "command" : command 
                 })
             print(f"received command : {command}")
-            execution = sandbox.run_code(command)
+            execution = await sandbox.commands.run(command)
             result = {
                 "command": command,
-                "stdout": execution.logs.stdout,
-                "stderr": execution.logs.stderr,
+                # "stdout": execution.logs.stdout,
+                # "stderr": execution.logs.stderr,
                 "exit_code": 0 if not execution.error else 1
             }
 
@@ -75,12 +81,10 @@ class AgentService:
                 "message": "Creating project..."
             })
         try:
-            async for chunk in self.agent.astream(messages, stream_mode="updates"):
-                # print(chunk)
-                
+            async for chunk in self.agent.astream(messages, stream_mode="updates"): 
                 if "call_llm" in chunk:
                     llm_msg = chunk["call_llm"]
-                    
+                    # print(f"LLM_MESSAGE \n {llm_msg}") 
                     # Stream AI thinking
                     if hasattr(llm_msg, "content") and llm_msg.content:
                         if socket:
@@ -92,6 +96,7 @@ class AgentService:
                     # Handle tool calls
                     if hasattr(llm_msg, "tool_calls") and llm_msg.tool_calls:
                         for call in llm_msg.tool_calls:
+                            print(f"Tool Called : {call['name']} \n")
                             tool_name = call["name"]
                             args = call["args"]
                             
@@ -113,7 +118,10 @@ class AgentService:
                                 save_file_store(project_id, file_store)
                             
                             await asyncio.sleep(0.05)
-            
+            #install dependency and run project inside the sandbox
+            await self.exec_in_sandbox("execute_command",{"command": "npm install"},sandbox,socket) 
+            await self.exec_in_sandbox("execute_command",{"command": "npm run dev"},sandbox,socket) 
+
             if socket:
                 await socket.send_json({
                     "e": "completed",

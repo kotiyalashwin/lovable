@@ -33,7 +33,6 @@ Your job:
 - Deliver all file paths with their content
 - Create a README.md with setup and run commands
 - Organize files properly (src/, public/, etc.)
-
 File structure example:
 - package.json (with dependencies)
 - vite.config.js
