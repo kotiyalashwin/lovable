@@ -1,0 +1,30 @@
+"use client"
+
+import { javascript } from "@codemirror/lang-javascript";
+import { oneDark } from "@codemirror/theme-one-dark";
+import CodeMirror from "@uiw/react-codemirror";
+import React from "react";
+
+interface CodeEditorProps {
+	code: string;
+	onChange?: (newCode: string) => void;
+}
+
+export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onChange }) => {
+	return (
+<CodeMirror
+      value={code}
+      height="100%"
+      theme={oneDark}
+      extensions={[javascript({ jsx: true, typescript: true })]}
+      readOnly={true}
+      basicSetup={{
+        lineNumbers: true,
+        highlightActiveLine: false,
+        highlightActiveLineGutter: false,
+      }}
+      onChange={(value) => onChange?.(value)}
+      className="rounded-lg bg-[#1c1c1c]"
+    />
+	);
+};

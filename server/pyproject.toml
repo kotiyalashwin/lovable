@@ -1,0 +1,16 @@
+[project]
+name = "server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "e2b-code-interpreter>=2.1.1",
+    "fastapi[standard]>=0.118.2",
+    "langchain[google-genai]>=0.3.27",
+    "langgraph>=0.6.9",
+    "python-dotenv>=1.1.1",
+]
+[tool.pyright]
+venv=".venv"
+venvPath="."
