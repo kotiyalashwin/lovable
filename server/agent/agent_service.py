@@ -18,27 +18,8 @@ class AgentService:
     async def get_sandbox(self, project_id: str):
         if project_id not in self.sandboxes:
             print(f'Initializing new sandbox for project: {project_id}')
-            self.sandboxes[project_id] =await  AsyncSandbox.create(timeout=600)
-            # await self.sandboxes[project_id].commands.run("npm i -g npm@latest") 
-            await self.sandboxes[project_id].commands.run("""
-mkdir -p ~/.npm-global &&
-npm config set prefix '~/.npm-global' &&
-export PATH="$HOME/.npm-global/bin:$PATH" &&
-npm install -g npm@latest &&
-echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
-""")
-
-            await self.sandboxes[project_id].commands.run("source ~/.bashrc && npm -v")
-
-            # template_id = await self.sandboxes[project_id].(name="node-with-latest-npm-persistent")
-            # print("✅ Saved persistent template:", template_id)
-            exec_result = await self.sandboxes[project_id].commands.run("npm --version", )
-            print("----------------------------------")
-            print("\n \n")
-            print(f"NPM --VERSION result: {exec_result}")
-            print("\n \n")
-            print("----------------------------------")
-            print("Sandbox is setup create with NPM environment")
+            self.sandboxes[project_id] =await  AsyncSandbox.create('lovable-next-serve')
+            print("Sandbox is setup create with NEXTJS environment")
         return self.sandboxes[project_id]
 
     async def close_sandbox(self, project_id: str):
@@ -49,87 +30,79 @@ echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
             print(f'  Closed sandbox: {project_id}')
 
     async def exec_in_sandbox(self, tool_name: str, tool_args: dict, sandbox: AsyncSandbox, socket: WebSocket):
-        # check which tool is being called
+    # check which tool is being called
         if tool_name == 'create_file':
             file_path = tool_args['file_path']
             content = tool_args['content']
             await sandbox.files.write(file_path, content) 
             if socket:
-               await  socket.send_json({'e': 'file_created', 'message': f'Created {file_path}'})
+                await socket.send_json({'e': 'file_created', 'message': f'Created {file_path}'})
+    
         elif tool_name == "execute_command":
-            print(f"{tool_args}")
             command = tool_args["command"]
-            background = tool_args.get("background", False)
-            print(f"command :{command}")
+        
             if socket:
                 await socket.send_json({
-                    "e":"command_started",
-                    "command" : command 
+                    "e": "command_started",
+                    "command": command[:200]
                 })
-            if background:
-                host = sandbox.get_host(5173)
-                # cmd = f"VITE_DEV_SERVER_ALLOWED_HOSTS='*' HOST={host} {command}"
-                # await sandbox.commands.run(command, background=True, timeout=300)
-                # await sandbox.commands.run(f"VITE_DEV_SERVER_HMR_HOST={host} {command}", background=True)
-                # print(f"✅ Started background process: {command}")
-                # await asyncio.sleep(5)
-                # server_res = await sandbox.commands.run("curl -I http://localhost:5173 || true", timeout=0)
-                #
-                await sandbox.commands.run(f"VITE_DEV_SERVER_HMR_HOST={host} {command} > /dev/null 2>&1 &")
-                print(f"✅ Scheduled background process: {command}")
-
-                # Poll the dev server until it returns HTTP 200
-                while True:
-                    res = await sandbox.commands.run("curl -s -o /dev/null -w '%{http_code}' http://localhost:5173 || true", timeout=0)
-                    status_code = res.stdout.strip()
-                    if status_code == "200":
-                        print("🌐 Dev server is up!")
-                        break
-                    else:
-                        print(f"Waiting for dev server... current status: {status_code}")
-                        await asyncio.sleep(2)  # wait a bit before retrying
-                url = f"https://{host}"
-                
-                print(f"🌐 Dev server running at: {url}")
-                # print({
-                #     # "run dev res" : exec_res, 
-                #     "curl res" : server_res
-                # })
-                result = {
-                    "command": command,
-                    "background": True,
-                    "url": url,
-                    "port": 5173,
-                }
-                
-                if socket:
-                    await socket.send_json({
-                        "e": "dev_server_started",
-                        "url": url,
-                        "message": f"Dev server running at {url}"
-                    })
-            else:
+        
+        
+            try:
                 result_obj = await sandbox.commands.run(command)
+            
+            # Log output to console
+                print("=" * 60)
+                print("✅ Command completed")
+                print("=" * 60)
+                print("STDOUT:")
+                print(result_obj.stdout)
+                if result_obj.stderr:
+                    print("\nSTDERR:")
+                    print(result_obj.stderr)
+                print("=" * 60)
                 
                 result = {
                     "command": command,
-                    "background": False,
                     "stdout": result_obj.stdout,
                     "stderr": result_obj.stderr,
                     "exit_code": result_obj.exit_code
                 }
                 
-                print(f"✅ Command completed: {command}")
-                print(f"   Output: {result_obj.stdout[:200]}...")
-                
+                # Send complete output to client
                 if socket:
                     await socket.send_json({
                         "e": "command_completed",
-                        "result": result
+                        "result": result,
+                        "stdout": result_obj.stdout,
+                        "stderr": result_obj.stderr,
+                        "exit_code": result_obj.exit_code
                     })
-            return result
+                
+                # Check for errors
+                if result_obj.exit_code != 0:
+                    print(f"⚠️ Command exited with code {result_obj.exit_code}")
+                    if socket:
+                        await socket.send_json({
+                            "e": "command_failed",
+                            "error": result_obj.stderr,
+                            "exit_code": result_obj.exit_code
+                        })
+                    raise Exception(f"Command failed: {result_obj.stderr}")
+                
+                return result
+            
+            except Exception as e:
+                print(f"❌ Command execution failed: {e}")
+                if socket:
+                    await socket.send_json({
+                        "e": "command_error",
+                        "error": str(e)
+                    })
+                raise
+        
         return {}
-    
+
     async def run_agent_stream(self,prompt:str,project_id:str,socket:WebSocket):
         messages = [HumanMessage(content=prompt)]
         sandbox = await self.get_sandbox(project_id)
@@ -141,6 +114,7 @@ echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
             })
         try:
             async for chunk in self.agent.astream(messages, stream_mode="updates"): 
+                print(chunk)
                 if "call_llm" in chunk:
                     llm_msg = chunk["call_llm"]
                     # print(f"LLM_MESSAGE \n {llm_msg}") 
@@ -177,9 +151,17 @@ echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
                                 save_file_store(project_id, file_store)
                             
                             await asyncio.sleep(0.05)
-            #install dependency and run project inside the sandbox
-            await self.exec_in_sandbox("execute_command",{"command": "npm install", "background":False},sandbox,socket) 
-            await self.exec_in_sandbox("execute_command",{"command": "npm run dev" , "background": True},sandbox,socket) 
+            if socket:
+                await socket.send_json({
+                    "e": "build_started",
+                    "message": "Building project..."
+                })
+            
+            # Build
+            host = sandbox.get_host(3000)
+            url = f"https://{host}"
+            
+            print(f"\n🌐 Project live at: {url}\n")
 
             if socket:
                 await socket.send_json({

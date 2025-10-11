@@ -15,7 +15,7 @@ interface ChatMessage {
   event?: "started" | "file_created" | "completed";
 }
 
-export default function Chat({projectId}:{projectId:string}) {
+export default function Chat({projectId , onSocketConnect}:{projectId:string; onSocketConnect:()=>void}) {
   const prompt = localStorage.getItem("prompt") ?? "";
   const [chats, setChats] = useState<ChatMessage[]>([
     { id: "1", type: "user", message: prompt },
@@ -34,6 +34,7 @@ export default function Chat({projectId}:{projectId:string}) {
 
     ws.onopen = () => {
       console.log("WebSocket connected");
+      onSocketConnect()  
     };
 
     ws.onmessage = (event) => {
@@ -70,7 +71,7 @@ export default function Chat({projectId}:{projectId:string}) {
     };
 
     return () => ws.close();
-  }, [projectId]);
+  }, [projectId,onSocketConnect]);
 
   const handleSend = () => {
     if (!input.trim()) return;

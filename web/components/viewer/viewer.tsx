@@ -2,6 +2,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Loader } from "../custom-loader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { CodeEditor } from "./code";
 import { FileExplorer } from "./explorer";
 
@@ -56,14 +57,17 @@ function buildFileTree(files: FileType[]): FileNode[] {
 	return objectToArray(root);
 }
 
-
-export const CodeViewer: React.FC<{projectId : string}> = ({projectId} : {projectId : string}) => {
+export const CodeViewer: React.FC<{ projectId: string }> = ({
+	projectId,
+}: {
+	projectId: string;
+}) => {
 	const [tree, setTree] = useState<FileNode[]>([]);
 	const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
 	// useEffect(() => {
 	//   setTree(buildFileTree(files));
 	// }, [files])
-
+    const [prevUrl, setPrevUrl]= useState<string | null>(null)
 	useEffect(() => {
 		axios
 			.post(`http://localhost:8000/chat/${projectId}`, {
@@ -73,14 +77,18 @@ export const CodeViewer: React.FC<{projectId : string}> = ({projectId} : {projec
 				const data = res.data;
 				const files: FileType[] = data.files;
 				const treeFiles = buildFileTree(files);
+                const prevUrl = `https://3000-${data.sandbox_id}.e2b.app`
+                setPrevUrl(prevUrl)
 				setTree(treeFiles);
-                setSelectedFile(treeFiles[0])
+				setSelectedFile(treeFiles[0]);
 			});
 	}, [projectId]);
 	return (
 		<div className="flex w-full h-screen">
 			{tree.length === 0 ? (
-				<div className="flex justify-center h-full w-full"><Loader variant="square" message="Building your MVP..." /></div>
+				<div className="flex justify-center h-full w-full">
+					<Loader variant="square" message="Building your MVP..." />
+				</div>
 			) : (
 				<>
 					{" "}
@@ -93,8 +101,39 @@ export const CodeViewer: React.FC<{projectId : string}> = ({projectId} : {projec
 					>
 						<FileExplorer files={tree} onFileClick={setSelectedFile} />
 					</div>
-					<div style={{ flex: 1, padding: "10px" }}>
-						{selectedFile && <CodeEditor code={selectedFile.content || ""} />}
+					{/* <div style={{ flex: 1, padding: "10px" }}> */}
+					{/* 	{selectedFile && <CodeEditor code={selectedFile.content || ""} />} */}
+					{/* </div> */}
+					<div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+						<Tabs defaultValue="code" className="flex-1 flex flex-col">
+							<TabsList>
+								<TabsTrigger value="code">Code Viewer</TabsTrigger>
+                                <TabsTrigger value="preview" className={prevUrl ? "":"disabled"}>Preview</TabsTrigger>
+							</TabsList>
+
+							<TabsContent value="code" className="flex-1 overflow-auto p-4">
+								{selectedFile ? (
+									<CodeEditor code={selectedFile.content || ""} />
+								) : (
+									<div>Select a file to view code</div>
+								)}
+							</TabsContent>
+
+							<TabsContent
+								value="preview"
+								className="flex-1 overflow-hidden flex justify-center items-center"
+							>
+								<iframe
+									src={prevUrl ?? ""}
+									title="Preview"
+									style={{
+										width: "100%",
+										height: "100%",
+										border: "none",
+									}}
+								/>{" "}
+							</TabsContent>
+						</Tabs>
 					</div>
 				</>
 			)}
