@@ -75,7 +75,7 @@ echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
                 # await asyncio.sleep(5)
                 # server_res = await sandbox.commands.run("curl -I http://localhost:5173 || true", timeout=0)
                 #
-                asyncio.create_task(sandbox.commands.run(f"VITE_DEV_SERVER_HMR_HOST={host} {command}", background=True))
+                await sandbox.commands.run(f"VITE_DEV_SERVER_HMR_HOST={host} {command} > /dev/null 2>&1 &")
                 print(f"✅ Scheduled background process: {command}")
 
                 # Poll the dev server until it returns HTTP 200
