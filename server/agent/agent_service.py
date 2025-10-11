@@ -1,8 +1,7 @@
 # better singleton pattern
 import asyncio
 from typing import Dict
-from e2b.api.client.api import sandboxes
-from fastapi import WebSocket, background
+from fastapi import WebSocket
 from langchain_core.messages import HumanMessage
 from agent.core import agent
 from e2b_code_interpreter import AsyncSandbox
@@ -19,7 +18,7 @@ class AgentService:
     async def get_sandbox(self, project_id: str):
         if project_id not in self.sandboxes:
             print(f'Initializing new sandbox for project: {project_id}')
-            self.sandboxes[project_id] =await  AsyncSandbox.create(timeout=360)
+            self.sandboxes[project_id] =await  AsyncSandbox.create(timeout=600)
             # await self.sandboxes[project_id].commands.run("npm i -g npm@latest") 
             await self.sandboxes[project_id].commands.run("""
 mkdir -p ~/.npm-global &&
@@ -68,16 +67,34 @@ echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
                     "command" : command 
                 })
             if background:
-                await sandbox.commands.run(command, background=True)
-                print(f"✅ Started background process: {command}")
-                
-                await asyncio.sleep(3)
-                
                 host = sandbox.get_host(5173)
+                # cmd = f"VITE_DEV_SERVER_ALLOWED_HOSTS='*' HOST={host} {command}"
+                # await sandbox.commands.run(command, background=True, timeout=300)
+                # await sandbox.commands.run(f"VITE_DEV_SERVER_HMR_HOST={host} {command}", background=True)
+                # print(f"✅ Started background process: {command}")
+                # await asyncio.sleep(5)
+                # server_res = await sandbox.commands.run("curl -I http://localhost:5173 || true", timeout=0)
+                #
+                asyncio.create_task(sandbox.commands.run(f"VITE_DEV_SERVER_HMR_HOST={host} {command}", background=True))
+                print(f"✅ Scheduled background process: {command}")
+
+                # Poll the dev server until it returns HTTP 200
+                while True:
+                    res = await sandbox.commands.run("curl -s -o /dev/null -w '%{http_code}' http://localhost:5173 || true", timeout=0)
+                    status_code = res.stdout.strip()
+                    if status_code == "200":
+                        print("🌐 Dev server is up!")
+                        break
+                    else:
+                        print(f"Waiting for dev server... current status: {status_code}")
+                        await asyncio.sleep(2)  # wait a bit before retrying
                 url = f"https://{host}"
                 
                 print(f"🌐 Dev server running at: {url}")
-                
+                # print({
+                #     # "run dev res" : exec_res, 
+                #     "curl res" : server_res
+                # })
                 result = {
                     "command": command,
                     "background": True,
