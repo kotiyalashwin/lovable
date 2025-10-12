@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Chat from "@/components/chat";
+import Chat from "@/components/chat/chat";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -20,16 +20,13 @@ export default function ChatWithCodeViewer({ projectId }: ChatWithCodeViewerProp
   return (
     <div className="h-screen w-screen bg-neutral-900 text-white">
       <ResizablePanelGroup direction="horizontal">
-        {/* Left panel */}
         <ResizablePanel className="min-h-screen" defaultSize={30} minSize={10} maxSize={90}>
           <Chat 
             projectId={projectId} 
             onSocketConnect={() => setIsSocketConnected(true)}
           />
         </ResizablePanel>
-        {/* Handle */}
         <ResizableHandle withHandle/>
-        {/* Right panel */}
         <ResizablePanel>
           {isSocketConnected ? (
             <CodeViewer projectId={projectId} />

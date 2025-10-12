@@ -4,9 +4,8 @@ from langgraph.graph import add_messages
 from langchain_core.messages import SystemMessage, BaseMessage, ToolCall
 from langgraph.func import entrypoint, task
 from dotenv import load_dotenv
-from .tools import create_file, execute_command
-from prompt import prompt
-
+from .tools import create_file,execute_command 
+from prompt import PROMPT
 load_dotenv()
 api_key = os.getenv('GOOGLE_API_KEY')
 if api_key is None:
@@ -22,7 +21,7 @@ llm_with_tools = llm.bind_tools(tools)
 @task
 async def call_llm(messages: list[BaseMessage]):
     """LLM decides whether to call a tool or not"""
-    return await llm_with_tools.ainvoke([SystemMessage(content=prompt)] + messages)
+    return await llm_with_tools.ainvoke([SystemMessage(content=PROMPT)] + messages)
 
 
 @task

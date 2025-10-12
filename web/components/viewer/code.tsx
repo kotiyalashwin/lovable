@@ -16,6 +16,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onChange }) => {
       value={code}
       height="100%"
       theme={oneDark}
+        
       extensions={[javascript({ jsx: true, typescript: true })]}
       readOnly={true}
       basicSetup={{

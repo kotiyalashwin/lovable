@@ -53,4 +53,4 @@ async def execute_command(command: str) -> dict:
     return {
         "command": command,
         "action": "execute_command"
-    }
+    }   

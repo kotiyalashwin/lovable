@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 import asyncio
 from agent.agent_service import agent_service
 from utils.persistent_store import load_file_store 
+from inject import inject
+import json
 app = FastAPI()
 
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_methods=["*"],allow_headers=["*"])
@@ -50,14 +52,25 @@ async def create_project(project_id:str,payload:dict):
     await active_runs[project_id]
     
     # Return results
-    file_store = load_file_store(project_id)
+    # file_store = load_file_store(project_id) 
     sandbox = agent_service.sandboxes.get(project_id)
+    if sandbox is None :
+        return {
+            "status": "success",
+            "project_id": project_id,
+            "file_count": 0,
+            "files": [],
+            "sandbox_id": sandbox.sandbox_id if sandbox else None,
+            "sandbox_active": project_id in agent_service.sandboxes
+        } 
+    result = await sandbox.commands.run(inject)
+    files = json.loads(result.stdout)
     
     return {
         "status": "success",
         "project_id": project_id,
-        "file_count": len(file_store),
-        "files": file_store,
+        "file_count": len(files),
+        "files": files,
         "sandbox_id": sandbox.sandbox_id if sandbox else None,
         "sandbox_active": project_id in agent_service.sandboxes
     }

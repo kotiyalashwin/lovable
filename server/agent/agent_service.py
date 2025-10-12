@@ -18,7 +18,7 @@ class AgentService:
     async def get_sandbox(self, project_id: str):
         if project_id not in self.sandboxes:
             print(f'Initializing new sandbox for project: {project_id}')
-            self.sandboxes[project_id] =await  AsyncSandbox.create('lovable-next-serve')
+            self.sandboxes[project_id] =await  AsyncSandbox.create('template-lovable')
             print("Sandbox is setup create with NEXTJS environment")
         return self.sandboxes[project_id]
 
@@ -34,7 +34,8 @@ class AgentService:
         if tool_name == 'create_file':
             file_path = tool_args['file_path']
             content = tool_args['content']
-            await sandbox.files.write(file_path, content) 
+            full_path=f"/home/user/nextjs-app/{file_path}"
+            await sandbox.files.write(full_path, content) 
             if socket:
                 await socket.send_json({'e': 'file_created', 'message': f'Created {file_path}'})
     
@@ -49,7 +50,8 @@ class AgentService:
         
         
             try:
-                result_obj = await sandbox.commands.run(command)
+                full_command = f"cd /home/user/nextjs-app && {command}"
+                result_obj = await sandbox.commands.run(full_command)
             
             # Log output to console
                 print("=" * 60)
@@ -123,7 +125,7 @@ class AgentService:
                         if socket:
                             await socket.send_json({
                                 "e": "thinking",
-                                "content": llm_msg.content
+                                "message": llm_msg.content
                             })
                     
                     # Handle tool calls
