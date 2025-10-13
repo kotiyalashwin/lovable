@@ -1,5 +1,6 @@
 # better singleton pattern
 import asyncio
+from pathlib import Path
 from typing import Dict
 from fastapi import WebSocket
 from langchain_core.messages import HumanMessage
@@ -7,6 +8,7 @@ from agent.core import agent
 from e2b_code_interpreter import AsyncSandbox
 import os
 from dotenv import load_dotenv 
+import json
 from utils.persistent_store import load_file_store,save_file_store
 load_dotenv() 
 api_key = os.getenv("E2B_API_KEY")
@@ -29,7 +31,7 @@ class AgentService:
             del self.sandboxes[project_id]
             print(f'  Closed sandbox: {project_id}')
 
-    async def exec_in_sandbox(self, tool_name: str, tool_args: dict, sandbox: AsyncSandbox, socket: WebSocket):
+    async def exec_in_sandbox(self, tool_name: str, tool_args: dict, sandbox: AsyncSandbox, socket: WebSocket,project_id:str):
     # check which tool is being called
         if tool_name == 'create_file':
             file_path = tool_args['file_path']
@@ -102,7 +104,27 @@ class AgentService:
                         "error": str(e)
                     })
                 raise
-        
+        elif tool_name == "save_context":
+            base_dir = Path(f"data/project/{project_id}")
+            context_dir = base_dir / "context"
+            semantic = tool_args["semantic"]
+            procedural = tool_args["procedural"]
+            episodic = tool_args["episodic"]
+            try :
+                os.makedirs(context_dir,exist_ok=True)
+                context_data = {
+                    "semantic": semantic.strip(),
+                    "procedural": procedural.strip(),
+                    "episodic": episodic.strip(),
+                }
+
+                context_path = os.path.join(context_dir, "context.json")
+                with open(context_path, "w") as f:
+                    json.dump(context_data,f,indent=2,)
+                print("Successfully save context for this command")
+            except Exception as e:
+                print(f"Error(Failed to save context) \n {e}")
+
         return {}
 
     async def run_agent_stream(self,prompt:str,project_id:str,socket:WebSocket):
@@ -140,7 +162,8 @@ class AgentService:
                                 tool_name,
                                 args,
                                 sandbox,
-                                socket
+                                socket,
+                                project_id
                             )
                             
                             # Save to persistent store (for your existing logic)
@@ -184,5 +207,3 @@ class AgentService:
 
 
 agent_service = AgentService()
-         
-

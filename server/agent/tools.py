@@ -54,3 +54,21 @@ async def execute_command(command: str) -> dict:
         "command": command,
         "action": "execute_command"
     }   
+
+@tool
+async def save_context(semantic: str,procedural: str = "",episodic: str = "") -> dict:
+    """
+    Save project context including semantic, procedural, and episodic memory
+    inside a context/ folder for future sessions.
+
+    Args:
+        semantic: Natural-language summary of the current project state (components, pages, libs).
+        procedural: Instructions or conventions on how to modify or extend the project.
+        episodic: Recent reasoning or decisions made by the agent.
+
+    Returns:
+        A success message with path to the saved file.
+    """
+    return {
+        "action" : "save_context"
+    } 

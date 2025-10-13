@@ -1,12 +1,13 @@
 # Python-generated files
 __pycache__/
 project_session/
+project/
 *.py[oc]
 build/
 dist/
 wheels/
 *.egg-info
-prompt.py
+/prompt.py
 # Virtual environments
 .venv
 .env
