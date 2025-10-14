@@ -23,8 +23,8 @@ class AgentService:
     async def get_sandbox(self, project_id: str):
         if project_id not in self.sandboxes:
             print(f'Initializing new sandbox for project: {project_id}')
-            self.sandboxes[project_id] =await  AsyncSandbox.create('template-lovable',timeout=600)
-            print("Sandbox is setup create with NEXTJS environment")
+            self.sandboxes[project_id] =await  AsyncSandbox.create('temp-react',timeout=600)
+            print("Sandbox is setup create with REACT environment")
         return self.sandboxes[project_id]
 
     async def close_sandbox(self, project_id: str):
@@ -39,7 +39,7 @@ class AgentService:
         if tool_name == 'create_file':
             file_path = tool_args['file_path']
             content = tool_args['content']
-            full_path=f"/home/user/nextjs-app/{file_path}"
+            full_path=f"/home/user/react-app/{file_path}"
             await sandbox.files.write(full_path, content) 
             if socket:
                 await socket.send_json({'e': 'file_created', 'message': f'Created {file_path}'})
@@ -56,7 +56,7 @@ class AgentService:
         
             try:
                 #TODO: try and use 'cwd' in run() instead of 'cd' in full_command
-                full_command = f"cd /home/user/nextjs-app && {command}"
+                full_command = f"cd /home/user/react-app && {command}"
                 result_obj = await sandbox.commands.run(full_command)
             
             # Log output to console
@@ -209,7 +209,7 @@ class AgentService:
                 })
             
             # Build
-            host = sandbox.get_host(3000)
+            host = sandbox.get_host(5173)
             url = f"https://{host}"
             
             print(f"\n🌐 Project live at: {url}\n")

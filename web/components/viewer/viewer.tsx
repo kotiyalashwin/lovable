@@ -79,7 +79,7 @@ export const CodeViewer: React.FC<{ projectId: string,prompt:string }> = ({
 				const data = res.data;
 				const files: FileType[] = data.files;
 				const treeFiles = buildFileTree(files);
-                const prevUrl = `https://3000-${data.sandbox_id}.e2b.app`
+                const prevUrl = `https://5173-${data.sandbox_id}.e2b.app`
                 setPrevUrl(prevUrl)
 				setTree(treeFiles);
 				setSelectedFile(treeFiles[0]);
