@@ -3,7 +3,10 @@ import asyncio
 from pathlib import Path
 from typing import Dict
 from fastapi import WebSocket
-from langchain_core.messages import HumanMessage
+from google.ai.generativelanguage_v1beta.types import content
+from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.tools import Tool
+from pydantic_core.core_schema import tagged_union_schema
 from agent.core import agent
 from e2b_code_interpreter import AsyncSandbox
 import os
@@ -20,7 +23,7 @@ class AgentService:
     async def get_sandbox(self, project_id: str):
         if project_id not in self.sandboxes:
             print(f'Initializing new sandbox for project: {project_id}')
-            self.sandboxes[project_id] =await  AsyncSandbox.create('template-lovable')
+            self.sandboxes[project_id] =await  AsyncSandbox.create('template-lovable',timeout=600)
             print("Sandbox is setup create with NEXTJS environment")
         return self.sandboxes[project_id]
 
@@ -52,6 +55,7 @@ class AgentService:
         
         
             try:
+                #TODO: try and use 'cwd' in run() instead of 'cd' in full_command
                 full_command = f"cd /home/user/nextjs-app && {command}"
                 result_obj = await sandbox.commands.run(full_command)
             
@@ -111,24 +115,47 @@ class AgentService:
             procedural = tool_args["procedural"]
             episodic = tool_args["episodic"]
             try :
+                file_store = load_file_store(project_id)
+                code_map = {entry["file_path"]: entry["content"] for entry in file_store}
                 os.makedirs(context_dir,exist_ok=True)
                 context_data = {
                     "semantic": semantic.strip(),
                     "procedural": procedural.strip(),
                     "episodic": episodic.strip(),
+                    "code_map": code_map,
+                    "structue": list(code_map.keys())
                 }
 
                 context_path = os.path.join(context_dir, "context.json")
                 with open(context_path, "w") as f:
                     json.dump(context_data,f,indent=2,)
                 print("Successfully save context for this command")
+                
             except Exception as e:
                 print(f"Error(Failed to save context) \n {e}")
+        elif tool_name == "get_context":
+            try:
+                context_path = Path(f"data/project/{project_id}/context/context.json")
+        
+                if not context_path.exists():
+                    return {
+                        "action": "get_context",
+                        "context": []
+                    }
 
+                with open(context_path, "r", encoding="utf-8") as f:
+                    context_data = json.load(f)
+
+                return {
+                    "action": "get_context",
+                    "context": context_data
+                }
+            except Exception as e: 
+                print(f"Erorr getting context \n {e}")
         return {}
 
     async def run_agent_stream(self,prompt:str,project_id:str,socket:WebSocket):
-        messages = [HumanMessage(content=prompt)]
+        messages = [HumanMessage(content=prompt)] 
         sandbox = await self.get_sandbox(project_id)
         file_store = load_file_store(project_id)
         if socket:
@@ -165,7 +192,6 @@ class AgentService:
                                 socket,
                                 project_id
                             )
-                            
                             # Save to persistent store (for your existing logic)
                             if tool_name == "create_file":
                                 entry = {
@@ -203,7 +229,4 @@ class AgentService:
                     "message": str(e)
                 })
             raise
-    
-
-
 agent_service = AgentService()

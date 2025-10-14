@@ -1,5 +1,7 @@
 from langchain_core.tools import tool
-from typing import Optional
+from pathlib import Path
+import json
+
 
 @tool
 async def create_file(file_path: str, content: str) -> dict:
@@ -72,3 +74,29 @@ async def save_context(semantic: str,procedural: str = "",episodic: str = "") ->
     return {
         "action" : "save_context"
     } 
+
+@tool
+async def get_context() -> dict:
+    """
+    Fetch the last saved context for a project.
+
+    Args:
+        project_id: The project identifier
+
+    Returns:
+        The previous semantic, procedural, episodic memory, and code_map.
+    """
+    # context_path = Path(f"data/project/{project_id}/context/context.json")
+    #
+    # if not context_path.exists():
+    #     return {
+    #         "action": "get_context",
+    #         "message": f"No context found for project {project_id}"
+    #     }
+    #
+    # with open(context_path, "r", encoding="utf-8") as f:
+    #     context_data = json.load(f)
+    #
+    return {
+        "action": "get_context",
+    }

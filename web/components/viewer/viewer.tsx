@@ -57,10 +57,11 @@ function buildFileTree(files: FileType[]): FileNode[] {
 	return objectToArray(root);
 }
 
-export const CodeViewer: React.FC<{ projectId: string }> = ({
-	projectId,
+export const CodeViewer: React.FC<{ projectId: string,prompt:string }> = ({
+	projectId, prompt
 }: {
 	projectId: string;
+    prompt:string
 }) => {
 	const [tree, setTree] = useState<FileNode[]>([]);
 	const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
@@ -69,9 +70,10 @@ export const CodeViewer: React.FC<{ projectId: string }> = ({
 	// }, [files])
     const [prevUrl, setPrevUrl]= useState<string | null>(null)
 	useEffect(() => {
+        setTree([])
 		axios
 			.post(`http://localhost:8000/chat/${projectId}`, {
-				prompt: localStorage.getItem("prompt"),
+				prompt: prompt,
 			})
 			.then((res) => {
 				const data = res.data;
@@ -82,7 +84,7 @@ export const CodeViewer: React.FC<{ projectId: string }> = ({
 				setTree(treeFiles);
 				setSelectedFile(treeFiles[0]);
 			});
-	}, [projectId]);
+	}, [projectId,prompt]);
 	return (
 		<div className="flex w-full h-screen">
 			{tree.length === 0 ? (

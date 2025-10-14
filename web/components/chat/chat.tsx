@@ -19,9 +19,11 @@ interface ChatMessage {
 export default function Chat({
 	projectId,
 	onSocketConnect,
+    changePrompt
 }: {
+    changePrompt:(value:string)=> void
 	projectId: string;
-	onSocketConnect: () => void;
+	onSocketConnect: (value:boolean) => void;
 }) {
 	const prompt = localStorage.getItem("prompt") ?? "";
 	const [chats, setChats] = useState<ChatMessage[]>([
@@ -41,7 +43,7 @@ export default function Chat({
 
 	  ws.onopen = () => {
 	    console.log("WebSocket connected");
-	    onSocketConnect()
+	    onSocketConnect(true)
 	  };
 
 	  ws.onmessage = (event) => {
@@ -90,6 +92,7 @@ export default function Chat({
 		};
 
 		setChats((prev) => [...prev, newUserMessage]);
+        changePrompt(input)
 		setInput("");
 	};
 	const getChatComponent = (type: string, message: string, action?: string) => {
