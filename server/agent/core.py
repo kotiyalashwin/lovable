@@ -4,7 +4,7 @@ from langgraph.graph import add_messages
 from langchain_core.messages import SystemMessage, BaseMessage, ToolCall
 from langgraph.func import entrypoint, task
 from dotenv import load_dotenv
-from .tools import create_file,execute_command,save_context 
+from .tools import create_file,execute_command, get_context,save_context 
 from prompt import PROMPT
 load_dotenv()
 api_key = os.getenv('GOOGLE_API_KEY')
@@ -13,7 +13,7 @@ if api_key is None:
 
 llm = ChatGoogleGenerativeAI(model='gemini-2.5-flash', google_api_key=api_key)
 
-tools = [create_file, execute_command,save_context]
+tools = [create_file, execute_command,save_context,get_context]
 tools_by_name = {tool.name: tool for tool in tools}
 llm_with_tools = llm.bind_tools(tools)
 

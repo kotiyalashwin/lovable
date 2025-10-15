@@ -47,6 +47,7 @@ class AgentService:
         elif tool_name == "execute_command":
             command = tool_args["command"]
         
+            #TODO: send some better message to the user about executing command
             if socket:
                 await socket.send_json({
                     "e": "command_started",
@@ -77,15 +78,6 @@ class AgentService:
                     "exit_code": result_obj.exit_code
                 }
                 
-                # Send complete output to client
-                if socket:
-                    await socket.send_json({
-                        "e": "command_completed",
-                        "result": result,
-                        "stdout": result_obj.stdout,
-                        "stderr": result_obj.stderr,
-                        "exit_code": result_obj.exit_code
-                    })
                 
                 # Check for errors
                 if result_obj.exit_code != 0:
@@ -108,54 +100,11 @@ class AgentService:
                         "error": str(e)
                     })
                 raise
-        elif tool_name == "save_context":
-            base_dir = Path(f"data/project/{project_id}")
-            context_dir = base_dir / "context"
-            semantic = tool_args["semantic"]
-            procedural = tool_args["procedural"]
-            episodic = tool_args["episodic"]
-            try :
-                file_store = load_file_store(project_id)
-                code_map = {entry["file_path"]: entry["content"] for entry in file_store}
-                os.makedirs(context_dir,exist_ok=True)
-                context_data = {
-                    "semantic": semantic.strip(),
-                    "procedural": procedural.strip(),
-                    "episodic": episodic.strip(),
-                    "code_map": code_map,
-                    "structue": list(code_map.keys())
-                }
-
-                context_path = os.path.join(context_dir, "context.json")
-                with open(context_path, "w") as f:
-                    json.dump(context_data,f,indent=2,)
-                print("Successfully save context for this command")
-                
-            except Exception as e:
-                print(f"Error(Failed to save context) \n {e}")
-        elif tool_name == "get_context":
-            try:
-                context_path = Path(f"data/project/{project_id}/context/context.json")
-        
-                if not context_path.exists():
-                    return {
-                        "action": "get_context",
-                        "context": []
-                    }
-
-                with open(context_path, "r", encoding="utf-8") as f:
-                    context_data = json.load(f)
-
-                return {
-                    "action": "get_context",
-                    "context": context_data
-                }
-            except Exception as e: 
-                print(f"Erorr getting context \n {e}")
         return {}
 
     async def run_agent_stream(self,prompt:str,project_id:str,socket:WebSocket):
         messages = [HumanMessage(content=prompt)] 
+        print(messages)
         sandbox = await self.get_sandbox(project_id)
         file_store = load_file_store(project_id)
         if socket:
@@ -165,7 +114,7 @@ class AgentService:
             })
         try:
             async for chunk in self.agent.astream(messages, stream_mode="updates"): 
-                print(chunk)
+                # print(chunk)
                 if "call_llm" in chunk:
                     llm_msg = chunk["call_llm"]
                     # print(f"LLM_MESSAGE \n {llm_msg}") 
@@ -183,7 +132,47 @@ class AgentService:
                             print(f"Tool Called : {call['name']} \n")
                             tool_name = call["name"]
                             args = call["args"]
+                            if  tool_name == "get_context":
+                                try:
+                                    context_path = Path(f"data/project/{project_id}/context/context.json")
                             
+                                    if not context_path.exists():
+                                        
+                                        messages.append(HumanMessage( content="No Context this is a fresh project"))
+                                    
+                                    with open(context_path, "r", encoding="utf-8") as f:
+                                        context = json.load(f)
+
+                                    messages.append(HumanMessage( content=f"Also here is the context of what you did before CONTEXT: {context}"))
+                                    continue
+                                except Exception as e: 
+                                    print(f"Erorr getting context \n {e}")
+                            if tool_name == "save_context":
+                                base_dir = Path(f"data/project/{project_id}")
+                                context_dir = base_dir / "context"
+                                semantic = args["semantic"]
+                                procedural = args["procedural"]
+                                episodic = args["episodic"]
+                                try :
+                                    file_store = load_file_store(project_id)
+                                    code_map = {entry["file_path"]: entry["content"] for entry in file_store}
+                                    os.makedirs(context_dir,exist_ok=True)
+                                    context_data = {
+                                        "semantic": semantic.strip(),
+                                        "procedural": procedural.strip(),
+                                        "episodic": episodic.strip(),
+                                        "code_map": code_map,
+                                        "structue": list(code_map.keys())
+                                    }
+
+                                    context_path = os.path.join(context_dir, "context.json")
+                                    with open(context_path, "w") as f:
+                                        json.dump(context_data,f,indent=2,)
+                                    print("Successfully save context for this command")
+                                    continue 
+                                except Exception as e:
+                                    print(f"Error(Failed to save context) \n {e}")
+
                             # Execute in E2B sandbox
                             result = await self.exec_in_sandbox(
                                 tool_name,
@@ -201,13 +190,7 @@ class AgentService:
                                 file_store.append(entry)
                                 save_file_store(project_id, file_store)
                             
-                            await asyncio.sleep(0.05)
-            if socket:
-                await socket.send_json({
-                    "e": "build_started",
-                    "message": "Building project..."
-                })
-            
+                            await asyncio.sleep(0.05) 
             # Build
             host = sandbox.get_host(5173)
             url = f"https://{host}"
