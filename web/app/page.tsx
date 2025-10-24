@@ -1,3 +1,4 @@
+import type { Easing } from "motion";
 import * as motion from "motion/react-client";
 import InputCard from "@/components/prompt-card";
 
@@ -10,13 +11,16 @@ const containerVariants = {
 
 const childVariants = {
 	hidden: { opacity: 0, y: 20 },
-	show: { opacity: 1, y: 0, transition: { duration: 1.5, ease: "easeOut" } },
+	show: {
+		opacity: 1,
+		y: 0,
+		transition: { duration: 1.5, ease: "easeOut" as Easing },
+	},
 };
 
 export default function Home() {
 	return (
 		<div className="h-screen w-screen flex justify-center items-center relative overflow-hidden bg-black">
-			{/* TEXT SECTION */}
 			<motion.div
 				variants={containerVariants}
 				initial="hidden"
@@ -34,23 +38,18 @@ export default function Home() {
 				))}
 			</motion.div>
 
-			{/* INPUT CARD */}
-            <InputCard/>
-			{/* GRADIENT BACKGROUNDS */}
+			<InputCard />
 			<div className="absolute inset-0 w-screen flex items-end justify-center pointer-events-none">
-				{/* Bottom Layer Glow */}
 				<div
 					className="absolute h-[1200px] w-full translate-y-1/2 rounded-full blur-3xl
-          bg-[radial-gradient(circle_at_center,_#6D28D9_0%,_#3B82F6_40%,_transparent_80%)]"
-			/>
-
-				{/* Mid Layer Glow */}
+                    bg-[radial-gradient(circle_at_center,_#6D28D9_0%,_#3B82F6_40%,_transparent_80%)]"
+				/>
 				<motion.div
+                    
 					className="absolute h-[1000px] w-[1400px] translate-y-1/2 rounded-full blur-2xl
           bg-[radial-gradient(circle_at_center,_#A855F7_0%,_#6D28D9_50%,_transparent_100%)]"
 				/>
 
-				{/* Top Layer Glow */}
 				<motion.div
 					className="absolute h-[800px] w-[1200px] translate-y-1/2 rounded-full blur-2xl opacity-70
           bg-[radial-gradient(circle_at_center,_#C084FC_0%,_#8B5CF6_40%,_transparent_100%)]"

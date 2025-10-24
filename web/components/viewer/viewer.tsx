@@ -97,8 +97,7 @@ export const CodeViewer: React.FC<{ projectId: string,prompt:string }> = ({
 					<div
 						style={{
 							width: "300px",
-							overflowY: "auto",
-							borderRight: "1px solid #ccc",
+							
 						}}
 					>
 						<FileExplorer files={tree} onFileClick={setSelectedFile} />
@@ -106,14 +105,14 @@ export const CodeViewer: React.FC<{ projectId: string,prompt:string }> = ({
 					{/* <div style={{ flex: 1, padding: "10px" }}> */}
 					{/* 	{selectedFile && <CodeEditor code={selectedFile.content || ""} />} */}
 					{/* </div> */}
-					<div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-						<Tabs defaultValue="code" className="flex-1 flex flex-col">
+					
+						<Tabs defaultValue="code" className="flex-1 flex flex-col px-4">
 							<TabsList>
 								<TabsTrigger value="code">Code Viewer</TabsTrigger>
                                 <TabsTrigger value="preview" className={prevUrl ? "":"disabled"}>Preview</TabsTrigger>
 							</TabsList>
 
-							<TabsContent value="code" className="flex-1 overflow-auto p-4">
+							<TabsContent value="code" className="flex-1 h-full overflow-auto ">
 								{selectedFile ? (
 									<CodeEditor code={selectedFile.content || ""} />
 								) : (
@@ -136,7 +135,6 @@ export const CodeViewer: React.FC<{ projectId: string,prompt:string }> = ({
 								/>{" "}
 							</TabsContent>
 						</Tabs>
-					</div>
 				</>
 			)}
 		</div>

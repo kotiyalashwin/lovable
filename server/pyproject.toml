@@ -9,7 +9,9 @@ dependencies = [
     "fastapi[standard]>=0.118.2",
     "langchain[google-genai]>=0.3.27",
     "langgraph>=0.6.9",
+    "psycopg2-binary>=2.9.11",
     "python-dotenv>=1.1.1",
+    "sqlalchemy>=2.0.43",
 ]
 [tool.pyright]
 venv=".venv"

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import CreatedMessage from "./created";
 import Thinking from "./thinking";
+import Terminal from "./terminal";
 
 type ChatType = "user" | "ai";
 
@@ -13,7 +14,7 @@ interface ChatMessage {
 	id: string;
 	type: ChatType;
 	message: string;
-	event?: "thinking" | "started" | "file_created" | "completed";
+	event?: "thinking" | "started" | "file_created" | "completed" | "command";
 }
 
 export default function Chat({
@@ -48,7 +49,7 @@ export default function Chat({
 
 	  ws.onmessage = (event) => {
 	    try {
-	      const data: { e: "started" | "file_created" | "completed" | "thinking" ; message: string } = JSON.parse(
+	      const data: { e: "started" | "file_created" | "completed" | "thinking" | "command" ; message: string } = JSON.parse(
 	        event.data
 	      );
 
@@ -56,7 +57,7 @@ export default function Chat({
 	        let updated = [...prev];
 
 	        // Remove any existing "started" messages if event is "update"
-	        if (data.e === "file_created") {
+	        if (data.e === "file_created" || data.e === "command") {
 	          updated = updated.filter((msg) => msg.event !== "started");
 	        }
 
@@ -105,6 +106,8 @@ export default function Chat({
 						return <CreatedMessage message={message} />;
                     case "started":
                         return <div className="text-neutral-400 px-4 animate-pulse text-xl">Creating Project...</div>
+                    case "command":
+                        return <Terminal command={message}/>
                     
 				}
 			case "user":
@@ -133,10 +136,7 @@ export default function Chat({
 				<div ref={chatEndRef} />
 			</div>
 
-			{/* Input box */}
-			<div className="p-4">
-				<Card className="w-full backdrop-blur-md border-neutral-600">
-					<CardContent className="flex items-center gap-2 p-2">
+			<div className="p-4 flex items-center gap-4 mb-10">
 						<Input
 							placeholder="Type your message..."
 							value={input}
@@ -153,8 +153,6 @@ export default function Chat({
 						>
 							Send
 						</button>
-					</CardContent>
-				</Card>
 			</div>
 		</div>
 	);

@@ -5,7 +5,6 @@ import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { SendHorizonal } from "lucide-react";
 import * as motion from "motion/react-client";
 import { generateRandomString } from "@/lib/randomId";
@@ -25,7 +24,7 @@ export default function InputCard() {
 
   return (
     <div className="w-full z-10 max-w-7xl flex justify-center">
-      <Card className="max-w-3xl w-full bg-neutral-900 border-neutral-700">
+      <Card className="max-w-3xl w-full bg-neutral-900 border-neutral-700 shadow-2xl">
         <CardContent>
           <input
             ref={inputRef}
@@ -33,11 +32,11 @@ export default function InputCard() {
             placeholder="Describe your next masterpiece..."
             className="block p-4 focus:outline-none w-full border-none text-xl  bg-neutral-900 text-neutral-200 placeholder:text-neutral-500"
           />
-          <Button onClick={handleSubmit} className="tracking-widest mt-4">
+          <Button onClick={handleSubmit} className="tracking-widest mt-4 group">
             SUBMIT{" "}
-            <motion.span whileHover={{ x: 12, opacity: 0 }}>
+            <span className="group-hover:translate-x-2 transition-transform duration-300 transform">
               <SendHorizonal />
-            </motion.span>
+            </span>
           </Button>
         </CardContent>
       </Card>
