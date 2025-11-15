@@ -7,13 +7,13 @@ import { CodeEditor } from "./code";
 import { FileExplorer } from "./explorer";
 
 type FileType = {
-	file_path: string; // e.g., "package.json", "src/app.jsx"
-	content: string; // content with \n included
+	file_path: string;
+	content: string;
 };
 
 export type FileNode = {
 	name: string;
-	path: string; // full path
+	path: string;
 	children?: FileNode[];
 	isFile: boolean;
 	content?: string;
@@ -43,7 +43,6 @@ function buildFileTree(files: FileType[]): FileNode[] {
 		}
 	}
 
-	// Convert nested objects to array recursively
 	function objectToArray(obj: any): FileNode[] {
 		return Object.values(obj).map((node: any) => ({
 			name: node.name,
@@ -65,9 +64,6 @@ export const CodeViewer: React.FC<{ projectId: string,prompt:string }> = ({
 }) => {
 	const [tree, setTree] = useState<FileNode[]>([]);
 	const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
-	// useEffect(() => {
-	//   setTree(buildFileTree(files));
-	// }, [files])
     const [prevUrl, setPrevUrl]= useState<string | null>(null)
 	useEffect(() => {
         setTree([])

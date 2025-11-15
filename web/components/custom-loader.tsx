@@ -93,7 +93,6 @@ export const Loader = ({ message = "Loading...", variant = "dots" }) => {
     );
   }
 
-  // Default: Modern spinner with glow
   return (
     <div className="flex flex-col items-center justify-center gap-6 p-8">
       <div className="relative w-16 h-16">

@@ -1,4 +1,4 @@
-# better singleton pattern
+
 import asyncio
 from pathlib import Path
 from typing import Dict, Optional
@@ -58,8 +58,7 @@ class AgentService:
                 if not file_path:
                     error_msg = "Error: file_path is required for create_file"
                     logger.error(error_msg)
-                    if socket:
-                        await socket.send_json({'e': 'error', 'message': error_msg})
+                    await self._send_ws_message(socket, {'e': 'error', 'message': error_msg})
                     return error_msg
                 
                 full_path = f'/home/user/react-app/{file_path}'
@@ -68,8 +67,7 @@ class AgentService:
                 success_msg = f"Successfully created file: {file_path} ({len(content)} characters)"
                 logger.info(success_msg)
                 
-                if socket:
-                    await socket.send_json({'e': 'file_created', 'message': file_path})
+                await self._send_ws_message(socket, {'e': 'file_created', 'message': file_path})
                 
                 return success_msg
 
@@ -79,23 +77,20 @@ class AgentService:
                 if not command:
                     error_msg = "Error: command is required for execute_command"
                     logger.error(error_msg)
-                    if socket:
-                        await socket.send_json({'e': 'error', 'message': error_msg})
+                    await self._send_ws_message(socket, {'e': 'error', 'message': error_msg})
                     return error_msg
                 
                 logger.info(f"Executing command: {command}")
                 
-                if socket:
-                    await socket.send_json({
-                        'e': 'command', 
-                        'message': f"Running: {command[:100]}{'...' if len(command) > 100 else ''}"
-                    })
+                await self._send_ws_message(socket, {
+                    'e': 'command', 
+                    'message': f"Running: {command[:100]}{'...' if len(command) > 100 else ''}"
+                })
 
                 try:
                     full_command = f'cd /home/user/react-app && {command}'
                     result_obj = await sandbox.commands.run(full_command)
 
-                    # Log output to console
                     logger.info('=' * 60)
                     logger.info('✅ Command completed')
                     logger.info('=' * 60)
@@ -104,7 +99,6 @@ class AgentService:
                         logger.info(f'\nSTDERR:\n{result_obj.stderr}')
                     logger.info('=' * 60)
 
-                    # Format result for LLM
                     result_parts = [f"Command: {command}"]
                     result_parts.append(f"Exit code: {result_obj.exit_code}")
                     
@@ -116,17 +110,14 @@ class AgentService:
 
                     result_msg = "\n".join(result_parts)
 
-                    # Check for errors
                     if result_obj.exit_code != 0:
                         warning = f'⚠️ Command exited with code {result_obj.exit_code}'
                         logger.warning(warning)
-                        if socket:
-                            await socket.send_json({
-                                'e': 'command_failed', 
-                                'error': result_obj.stderr or 'Command failed', 
-                                'exit_code': result_obj.exit_code
-                            })
-                        # Still return the result so LLM can see what happened
+                        await self._send_ws_message(socket, {
+                            'e': 'command_failed', 
+                            'error': result_obj.stderr or 'Command failed', 
+                            'exit_code': result_obj.exit_code
+                        })
                         return f"Command failed with exit code {result_obj.exit_code}:\n{result_msg}"
 
                     return result_msg
@@ -134,8 +125,7 @@ class AgentService:
                 except Exception as e:
                     error_msg = f'❌ Command execution failed: {e}'
                     logger.error(error_msg)
-                    if socket:
-                        await socket.send_json({'e': 'command_error', 'error': str(e)})
+                    await self._send_ws_message(socket, {'e': 'command_error', 'error': str(e)})
                     return f"Error executing command: {str(e)}"
             
             else:
@@ -146,8 +136,7 @@ class AgentService:
         except Exception as e:
             error_msg = f"Error in exec_in_sandbox for {tool_name}: {str(e)}"
             logger.error(error_msg, exc_info=True)
-            if socket:
-                await socket.send_json({'e': 'error', 'message': error_msg})
+            await self._send_ws_message(socket, {'e': 'error', 'message': error_msg})
             return error_msg
 
     async def handle_context_tool(
@@ -171,7 +160,6 @@ class AgentService:
                 with open(context_path, 'r', encoding='utf-8') as f:
                     context = json.load(f)
                 
-                # Format context for LLM
                 context_msg = f"""Previous project context:
 Semantic: {context.get('semantic', 'N/A')}
 Procedural: {context.get('procedural', 'N/A')}
@@ -199,7 +187,6 @@ Please use this context to understand what was built previously and continue fro
                 if not semantic:
                     return "Error: semantic context is required for save_context"
                 
-                # Reload file store to get latest state
                 file_store = load_file_store(project_id)
                 code_map = {entry['file_path']: entry['content'] for entry in file_store}
                 
@@ -231,8 +218,7 @@ Please use this context to understand what was built previously and continue fro
         if socket:
             try:
                 await socket.send_json(message)
-                # Small delay to ensure message is sent before next operation
-                await asyncio.sleep(0.001)
+                await asyncio.sleep(0.02)
             except Exception as e:
                 logger.warning(f"Failed to send WebSocket message: {e}")
 
@@ -240,108 +226,112 @@ Please use this context to understand what was built previously and continue fro
         """
         Run the agent with streaming support, properly handling tool execution
         and feeding results back to the LLM. Messages are sent in real-time.
+        Uses StateGraph for better streaming control.
         """
-        messages = [HumanMessage(content=prompt)]
+        from langchain_core.messages import HumanMessage, ToolMessage
+        from agent.core import AgentState
+        
+        current_state: AgentState = {
+            "messages": [HumanMessage(content=prompt)],
+            "iteration_count": 0
+        }
+        
         sandbox = await self.get_sandbox(project_id)
         file_store = load_file_store(project_id)
         
         await self._send_ws_message(socket, {'e': 'started', 'message': 'Creating project...'})
         
         try:
-            # Use updates mode but send messages immediately as we process them
-            async for chunk in self.agent.astream(messages, stream_mode='updates'):
-                # Handle LLM responses - send immediately
+            async for chunk in self.agent.astream(current_state, stream_mode='updates'):  # type: ignore
                 if 'call_llm' in chunk:
-                    llm_msg = chunk['call_llm']
+                    llm_node_output = chunk['call_llm']
+                    new_messages = llm_node_output.get('messages', [])
                     
-                    # Stream AI thinking/content immediately
-                    if hasattr(llm_msg, 'content') and llm_msg.content:
-                        await self._send_ws_message(socket, {
-                            'e': 'thinking', 
-                            'message': llm_msg.content
-                        })
-                        logger.debug(f"LLM content: {llm_msg.content[:100]}...")
-
-                    # Handle tool calls - process and send immediately
-                    if hasattr(llm_msg, 'tool_calls') and llm_msg.tool_calls:
-                        tool_results = []
+                    if new_messages:
+                        current_state["messages"] = list(current_state["messages"]) + new_messages
+                        llm_msg = new_messages[-1]
                         
-                        # Process tools sequentially to send messages in real-time
-                        for call in llm_msg.tool_calls:
-                            tool_name = call.get('name', '')
-                            args = call.get('args', {})
-                            tool_call_id = call.get('id', 'unknown')
+                        if hasattr(llm_msg, 'content') and llm_msg.content:
+                            await self._send_ws_message(socket, {
+                                'e': 'thinking', 
+                                'message': llm_msg.content
+                            })
+                            logger.debug(f"LLM content: {llm_msg.content[:100]}...")
+
+                        if hasattr(llm_msg, 'tool_calls') and llm_msg.tool_calls:
+                            sandbox_tool_results = []
+                            context_tool_calls = []
                             
-                            logger.info(f'Tool called: {tool_name} with args: {list(args.keys())}')
-                            
-                            # Send tool call notification immediately
-                            
-                            # Handle context tools (get_context, save_context)
-                            if tool_name in ['get_context', 'save_context']:
-                                result_content = await self.handle_context_tool(
-                                    tool_name, args, project_id, file_store
-                                )
-                                if result_content:
-                                    tool_results.append(ToolMessage(
-                                        content=result_content,
-                                        tool_call_id=tool_call_id
-                                    ))
-                                    # Send result immediately
-                                continue
-                            
-                            # Execute sandbox tools (create_file, execute_command)
-                            if tool_name in ['create_file', 'execute_command']:
-                                try:
-                                    # Send progress update immediately
-                                    if tool_name == 'create_file':
-                                        file_path = args.get('file_path', 'unknown')
+                            for call in llm_msg.tool_calls:
+                                tool_name = call.get('name', '')
+                                
+                                if tool_name in ['create_file', 'execute_command']:
+                                    args = call.get('args', {})
+                                    tool_call_id = call.get('id', 'unknown')
+                                    
+                                    logger.info(f'Executing sandbox tool: {tool_name} with args: {list(args.keys())}')
+                                    
+                                    try:
+                                        if tool_name == 'create_file':
+                                            file_path = args.get('file_path', 'unknown')
+                                            await self._send_ws_message(socket, {
+                                                'e': 'file_creating',
+                                                'message': f'Creating {file_path}...'
+                                            })
+                                        
+                                        result_content = await self.exec_in_sandbox(
+                                            tool_name, args, sandbox, socket
+                                        )
+                                        
+                                        if tool_name == 'create_file':
+                                            entry = {
+                                                'file_path': args.get('file_path'),
+                                                'content': args.get('content', '')
+                                            }
+                                            file_store.append(entry)
+                                            save_file_store(project_id, file_store)
+                                        
+                                        sandbox_tool_results.append(ToolMessage(
+                                            content=result_content,
+                                            tool_call_id=tool_call_id
+                                        ))
+                                        
+                                    except Exception as e:
+                                        error_msg = f"Error executing {tool_name}: {str(e)}"
+                                        logger.error(error_msg, exc_info=True)
+                                        sandbox_tool_results.append(ToolMessage(
+                                            content=error_msg,
+                                            tool_call_id=call.get('id', 'unknown')
+                                        ))
                                         await self._send_ws_message(socket, {
-                                            'e': 'file_creating',
-                                            'message': f'Creating {file_path}...'
+                                            'e': 'tool_error',
+                                            'tool': tool_name,
+                                            'message': error_msg
                                         })
                                     
-                                    # Execute tool - this already sends messages via exec_in_sandbox
-                                    result_content = await self.exec_in_sandbox(
-                                        tool_name, args, sandbox, socket
-                                    )
-                                    
-                                    # Save to persistent store for create_file
-                                    if tool_name == 'create_file':
-                                        entry = {
-                                            'file_path': args.get('file_path'),
-                                            'content': args.get('content', '')
-                                        }
-                                        file_store.append(entry)
-                                        save_file_store(project_id, file_store)
-                                    
-                                    tool_results.append(ToolMessage(
-                                        content=result_content,
-                                        tool_call_id=tool_call_id
-                                    ))
-                                    
-                                    
-                                except Exception as e:
-                                    error_msg = f"Error executing {tool_name}: {str(e)}"
-                                    logger.error(error_msg, exc_info=True)
-                                    tool_results.append(ToolMessage(
-                                        content=error_msg,
-                                        tool_call_id=tool_call_id
-                                    ))
-                                    # Send error immediately
-                                    await self._send_ws_message(socket, {
-                                        'e': 'tool_error',
-                                        'tool': tool_name,
-                                        'message': error_msg
-                                    })
+                                    await asyncio.sleep(0.02)
+                                else:
+                                    context_tool_calls.append(call)
                             
-                            # Small delay to ensure messages are sent
-                            await asyncio.sleep(0.01)
-                        
-                        # Add tool results to messages for next LLM call
-                        if tool_results:
-                            messages.extend(tool_results)
+                            if sandbox_tool_results:
+                                current_state["messages"] = list(current_state["messages"]) + sandbox_tool_results
+                                
+                                if not context_tool_calls:
+                                    continue_state = {
+                                        "messages": current_state["messages"],
+                                        "iteration_count": current_state.get("iteration_count", 0)
+                                    }
+                
+                elif 'execute_tools' in chunk:
+                    tools_node_output = chunk['execute_tools']
+                    new_messages = tools_node_output.get('messages', [])
+                    
+                    if new_messages:
+                        current_state["messages"] = list(current_state["messages"]) + new_messages
+                        current_state["iteration_count"] = tools_node_output.get("iteration_count", current_state.get("iteration_count", 0))
+                    
+                    logger.debug("Graph executed tools node")
             
-            # Get sandbox URL
             try:
                 host = sandbox.get_host(5173)
                 url = f'https://{host}'

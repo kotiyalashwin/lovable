@@ -129,12 +129,10 @@ export const FileExplorer = ({ files , onFileClick} : FileExplorerProps) => {
 
   return (
     <div className="w-80 h-screen flex flex-col bg-[#0a0a0a] border-r border-neutral-900/50">
-      {/* Header */}
       <div className="px-4 py-3 border-b border-neutral-900/50">
         <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Explorer</h2>
       </div>
 
-      {/* File Tree */}
       <div className="flex-1 overflow-y-auto py-2 px-2">
         {files.length > 0 ? (
           files.map(node => renderTree(node))
@@ -148,7 +146,6 @@ export const FileExplorer = ({ files , onFileClick} : FileExplorerProps) => {
         )}
       </div>
 
-      {/* Footer Stats */}
       {files.length > 0 && (
         <div className="px-4 py-2 border-t border-neutral-900/50 text-xs text-neutral-500">
           <div className="flex justify-between">

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import CreatedMessage from "./created";
 import Thinking from "./thinking";
 import Terminal from "./terminal";
+import FileCreating from "./file-creating";
 
 type ChatType = "user" | "ai";
 
@@ -13,7 +14,8 @@ interface ChatMessage {
 	id: string;
 	type: ChatType;
 	message: string;
-	event?: "thinking" | "started" | "file_created" | "completed" | "command";
+	event?: "thinking" | "started" | "file_created" | "file_creating" | "completed" | "command";
+	completed?: boolean;
 }
 
 export default function Chat({
@@ -32,14 +34,12 @@ export default function Chat({
 	const [input, setInput] = useState("");
 	const chatEndRef = useRef<HTMLDivElement>(null);
 
-	// Scroll to bottom whenever chats update
 	useEffect(() => {
 		chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	});
 
-	// Connect to WebSocket
 	useEffect(() => {
-	  const ws = new WebSocket(`ws://localhost:8000/ws/${projectId}`); // replace with your server URL
+	  const ws = new WebSocket(`ws://localhost:8000/ws/${projectId}`);
 
 	  ws.onopen = () => {
 	    console.log("WebSocket connected");
@@ -48,19 +48,26 @@ export default function Chat({
 
 	  ws.onmessage = (event) => {
 	    try {
-	      const data: { e: "started" | "file_created" | "completed" | "thinking" | "command" ; message: string } = JSON.parse(
+	      const data: { e: "started" | "file_created" | "file_creating" | "completed" | "thinking" | "command" ; message: string } = JSON.parse(
 	        event.data
 	      );
 
 	      setChats((prev) => {
 	        let updated = [...prev];
 
-	        // Remove any existing "started" messages if event is "update"
 	        if (data.e === "file_created" || data.e === "command") {
 	          updated = updated.filter((msg) => msg.event !== "started");
 	        }
 
-	        // Add new AI message
+	        if (data.e === "file_created") {
+	          for (let i = updated.length - 1; i >= 0; i--) {
+	            if (updated[i].event === "file_creating" && !updated[i].completed) {
+	              updated[i] = { ...updated[i], completed: true };
+	              break;
+	            }
+	          }
+	        }
+
 	        updated.push({
 	          id: Date.now().toString(),
 	          type: "ai",
@@ -95,7 +102,7 @@ export default function Chat({
         changePrompt(input)
 		setInput("");
 	};
-	const getChatComponent = (type: string, message: string, action?: string) => {
+	const getChatComponent = (type: string, message: string, action?: string, completed?: boolean) => {
 		switch (type) {
 			case "ai":
 				switch (action) {
@@ -103,6 +110,8 @@ export default function Chat({
 						return <Thinking message={message} />;
 					case "file_created":
 						return <CreatedMessage message={message} />;
+					case "file_creating":
+						return <FileCreating message={message} completed={completed} />;
                     case "started":
                         return <div className="text-neutral-500 px-4 animate-pulse text-sm font-light">Creating Project...</div>
                     case "command":
@@ -121,14 +130,13 @@ export default function Chat({
 		<div className="h-full flex bg-[#0a0a0a] flex-col text-white">
 			<h1 className="text-sm font-medium mb-2 px-6 pt-6 text-neutral-400 uppercase tracking-wider">Conversation</h1>
 
-			{/* Chat container */}
 			<div className="flex-1 border-t border-neutral-900/50 overflow-y-auto px-6 py-4 space-y-5">
 				{chats.map((chat) => (
 					<div
 						key={chat.id}
 						className={`flex ${chat.type === "user" ? "justify-end" : "justify-start"}`}
 					>
-						{getChatComponent(chat.type, chat.message, chat.event)}
+						{getChatComponent(chat.type, chat.message, chat.event, chat.completed)}
 					</div>
 				))}
 				<div ref={chatEndRef} />
