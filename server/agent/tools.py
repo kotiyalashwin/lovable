@@ -1,10 +1,11 @@
 from langchain_core.tools import tool
 from pathlib import Path
 import json
+from typing import Optional
 
 
 @tool
-async def create_file(file_path: str, content: str) -> dict:
+async def create_file(file_path: str, content: str) -> str:
     """
     Create a file with the given content at the specified path.
     
@@ -13,36 +14,30 @@ async def create_file(file_path: str, content: str) -> dict:
         content: The content to write to the file
     
     Returns:
-        A dictionary with file_path and success status
+        Success message indicating the file was created
     """
-    # This tool now just defines the interface
-    # Actual execution happens in the agent service
-    return {
-        "file_path": file_path,
-        "content": content,
-        "action": "create_file"
-    }
+    # Tool interface - actual execution handled in agent_service
+    # This allows the LLM to understand the tool signature
+    return f"File {file_path} will be created with {len(content)} characters"
 
 
 @tool
-async def read_file(file_path: str) -> dict:
+async def read_file(file_path: str) -> str:
     """
-    Read the content of a file.
+    Read the content of a file from the project.
     
     Args:
-        file_path: The path of the file to read
+        file_path: The path of the file to read (relative to project root)
     
     Returns:
-        The content of the file
+        The content of the file, or an error message if file doesn't exist
     """
-    return {
-        "file_path": file_path,
-        "action": "read_file"
-    }
+    # Tool interface - actual execution handled in agent_service
+    return f"Reading file {file_path}"
 
 
 @tool
-async def execute_command(command: str) -> dict:
+async def execute_command(command: str) -> str:
     """
     Execute a shell command in the project environment.
     
@@ -50,15 +45,14 @@ async def execute_command(command: str) -> dict:
         command: The command to execute (e.g., "npm install", "npm run dev")
     
     Returns:
-        Command output and status
+        Command output including stdout, stderr, and exit code
     """
-    return {
-        "command": command,
-        "action": "execute_command"
-    }   
+    # Tool interface - actual execution handled in agent_service
+    return f"Executing command: {command}"
+
 
 @tool
-async def save_context(semantic: str,procedural: str = "",episodic: str = "") -> dict:
+async def save_context(semantic: str, procedural: str = "", episodic: str = "") -> str:
     """
     Save project context including semantic, procedural, and episodic memory
     inside a context/ folder for future sessions.
@@ -71,32 +65,19 @@ async def save_context(semantic: str,procedural: str = "",episodic: str = "") ->
     Returns:
         A success message with path to the saved file.
     """
-    return {
-        "action" : "save_context"
-    } 
+    # Tool interface - actual execution handled in agent_service
+    return "Context will be saved for future sessions"
+
 
 @tool
-async def get_context() -> dict:
+async def get_context() -> str:
     """
-    Fetch the last saved context for a project.
-
-    Args:
-        project_id: The project identifier
+    Fetch the last saved context for a project. This retrieves semantic, procedural,
+    and episodic memory along with the code map from previous sessions.
 
     Returns:
-        The previous semantic, procedural, episodic memory, and code_map.
+        The previous context data including semantic, procedural, episodic memory, and code_map,
+        or a message indicating no context exists for a fresh project.
     """
-    # context_path = Path(f"data/project/{project_id}/context/context.json")
-    #
-    # if not context_path.exists():
-    #     return {
-    #         "action": "get_context",
-    #         "message": f"No context found for project {project_id}"
-    #     }
-    #
-    # with open(context_path, "r", encoding="utf-8") as f:
-    #     context_data = json.load(f)
-    #
-    return {
-        "action": "get_context",
-    }
+    # Tool interface - actual execution handled in agent_service
+    return "Retrieving context from previous sessions"

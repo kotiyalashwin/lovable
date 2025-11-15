@@ -9,12 +9,12 @@ const Thinking = ({ message }: { message: string }) => {
 			animate={{ scale: 1, opacity: 1 }}
 			transition={{ duration: 0.5, ease: "easeOut" }}
 		>
-			<Card>
-				<CardHeader className="flex items-center gap-2 text-neutral-400">
-					<Lightbulb size={20} />
-					Thought Process
+			<Card className="bg-neutral-900/30 border border-neutral-800/50 rounded-lg p-3 max-w-[85%]">
+				<CardHeader className="flex items-center p-0 pb-2 gap-2 text-neutral-500">
+					<Lightbulb size={16} className="text-neutral-500" />
+					<span className="text-xs font-medium uppercase tracking-wide">Thought Process</span>
 				</CardHeader>
-				<CardContent className="space-y-2 text-sm text-neutral-300">
+				<CardContent className="space-y-2 text-sm p-0 text-neutral-300 leading-relaxed">
 					{message}
 				</CardContent>
 			</Card>

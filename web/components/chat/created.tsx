@@ -8,9 +8,9 @@ export default function CreatedMessage({ message }: { message: string }) {
             initial={{x:-10, opacity:0}}
             animate={{x:0 , opacity:1}}
             transition={{duration:0.25, }}
-            className=" flex items-center text-lg  p-2  text-center font-thin  tracking-tight text-neutral-400 italic">
-			    <ChevronRight size={18}/>
-            Created <span className="ml-2 border-2 text-white shadow-md shadow-purple-400 border-neutral-400 px-2 skew-2">{message}</span>
+            className="flex items-center gap-2 text-sm px-4 py-2 text-neutral-400 font-light">
+			    <ChevronRight size={14} className="text-neutral-500"/>
+            <span className="text-neutral-500">Created</span> <span className="text-neutral-300">{message}</span>
 			</motion.div>
 	);
 }

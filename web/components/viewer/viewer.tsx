@@ -86,55 +86,46 @@ export const CodeViewer: React.FC<{ projectId: string,prompt:string }> = ({
 			});
 	}, [projectId,prompt]);
 	return (
-		<div className="flex w-full h-screen">
+		<div className="flex w-full h-screen bg-[#0a0a0a]">
 			{tree.length === 0 ? (
 				<div className="flex justify-center h-full w-full">
 					<Loader variant="square" message="Building your MVP..." />
 				</div>
 			) : (
 				<>
-					{" "}
-					<div
-						style={{
-							width: "300px",
-							
-						}}
-					>
+					<div className="w-80 flex-shrink-0">
 						<FileExplorer files={tree} onFileClick={setSelectedFile} />
 					</div>
-					{/* <div style={{ flex: 1, padding: "10px" }}> */}
-					{/* 	{selectedFile && <CodeEditor code={selectedFile.content || ""} />} */}
-					{/* </div> */}
 					
-						<Tabs defaultValue="code" className="flex-1 flex flex-col px-4">
-							<TabsList>
-								<TabsTrigger value="code">Code Viewer</TabsTrigger>
-                                <TabsTrigger value="preview" className={prevUrl ? "":"disabled"}>Preview</TabsTrigger>
+					<Tabs defaultValue="code" className="flex-1 flex flex-col min-w-0">
+						<div className="px-4 pt-4 border-b border-neutral-900/50">
+							<TabsList className="bg-neutral-900/30 border border-neutral-800/50">
+								<TabsTrigger value="code" className="text-xs">Code Viewer</TabsTrigger>
+								<TabsTrigger value="preview" className={`text-xs ${prevUrl ? "" : "opacity-50 cursor-not-allowed"}`} disabled={!prevUrl}>Preview</TabsTrigger>
 							</TabsList>
+						</div>
 
-							<TabsContent value="code" className="flex-1 h-full overflow-auto ">
-								{selectedFile ? (
+						<TabsContent value="code" className="flex-1 overflow-hidden p-0 m-0">
+							{selectedFile ? (
+								<div className="h-full w-full">
 									<CodeEditor code={selectedFile.content || ""} />
-								) : (
-									<div>Select a file to view code</div>
-								)}
-							</TabsContent>
+								</div>
+							) : (
+								<div className="flex items-center justify-center h-full text-neutral-500 text-sm">Select a file to view code</div>
+							)}
+						</TabsContent>
 
-							<TabsContent
-								value="preview"
-								className="flex-1 overflow-hidden flex justify-center items-center"
-							>
-								<iframe
-									src={prevUrl ?? ""}
-									title="Preview"
-									style={{
-										width: "100%",
-										height: "100%",
-										border: "none",
-									}}
-								/>{" "}
-							</TabsContent>
-						</Tabs>
+						<TabsContent
+							value="preview"
+							className="flex-1 overflow-hidden p-0 m-0"
+						>
+							<iframe
+								src={prevUrl ?? ""}
+								title="Preview"
+								className="w-full h-full border-none"
+							/>
+						</TabsContent>
+					</Tabs>
 				</>
 			)}
 		</div>

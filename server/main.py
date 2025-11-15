@@ -3,13 +3,9 @@ from fastapi.middleware.cors  import CORSMiddleware
 from fastapi.responses import JSONResponse 
 import asyncio
 from agent.agent_service import agent_service
-from utils.persistent_store import load_file_store 
 from inject import inject
-from db.db import engine,SessionLocal
-from db import models
 import json
 app = FastAPI()
-models.Base.metadata.create_all(bind=engine)
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_methods=["*"],allow_headers=["*"])
 
 active_sockets={}
@@ -75,7 +71,9 @@ async def create_project(project_id:str,payload:dict):
         "files": files,
         "sandbox_id": sandbox.sandbox_id if sandbox else None,
         "sandbox_active": project_id in agent_service.sandboxes
-    }
+}
+
+
 #websocket 
 @app.websocket("/ws/{project_id}")
 async def ws_listener(websocket: WebSocket, project_id: str):
@@ -89,3 +87,4 @@ async def ws_listener(websocket: WebSocket, project_id: str):
         print(f"WebSocket disconnected for project {project_id}")
     finally:
         active_sockets.pop(project_id, None)
+

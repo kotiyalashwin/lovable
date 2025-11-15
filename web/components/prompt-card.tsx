@@ -1,4 +1,3 @@
-// app/InputCard.tsx
 "use client";
 
 import { useRef } from "react";
@@ -17,24 +16,42 @@ export default function InputCard() {
     const value = inputRef.current?.value;
     if (value) {
       localStorage.setItem("prompt", value);
-      const randomId = generateRandomString(10)  
+      const randomId = generateRandomString(10);
       router.push(`/project/${randomId}`);
     }
   };
 
   return (
     <div className="w-full z-10 max-w-7xl flex justify-center">
-      <Card className="max-w-3xl w-full bg-neutral-900 border-neutral-700 shadow-2xl">
+      <Card
+        className="
+          max-w-3xl w-full
+          bg-neutral-900/70 
+          border border-neutral-700/50 
+          shadow-2xl 
+          backdrop-blur-xl
+        "
+      >
         <CardContent>
           <input
             ref={inputRef}
             name="prompt"
             placeholder="Describe your next masterpiece..."
-            className="block p-4 focus:outline-none w-full border-none text-xl  bg-neutral-900 text-neutral-200 placeholder:text-neutral-500"
+            className="
+              block p-4 w-full text-xl 
+              bg-transparent 
+              focus:outline-none 
+              text-neutral-100 
+              placeholder:text-neutral-400
+            "
           />
-          <Button onClick={handleSubmit} className="tracking-widest mt-4 group">
-            SUBMIT{" "}
-            <span className="group-hover:translate-x-2 transition-transform duration-300 transform">
+
+          <Button
+            onClick={handleSubmit}
+            className="tracking-widest mt-4 group   border border-neutral-600/40"
+          >
+            SUBMIT
+            <span className="group-hover:translate-x-2 transition-transform duration-300">
               <SendHorizonal />
             </span>
           </Button>
@@ -43,4 +60,3 @@ export default function InputCard() {
     </div>
   );
 }
-
